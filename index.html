@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>แผนที่ร้านค้าคนละครึ่งพลัส - ขอนแก่น</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    body { margin: 0; font-family: sans-serif; }
+    #map { height: 65vh; }
+    .form-container {
+      padding: 10px;
+      background: #f2f2f2;
+      border-top: 1px solid #ddd;
+    }
+    input, select, textarea, button {
+      width: 100%; margin: 6px 0; padding: 10px; font-size: 16px;
+    }
+    button { cursor: pointer; background: #0078ff; color: white; border: none; }
+  </style>
+</head>
+<body>
+
+<h3 style="text-align:center;">แผนที่ร้านค้าที่เข้าร่วมโครงการ คนละครึ่งพลัส (ขอนแก่น)</h3>
+
+<div id="map"></div>
+
+<div class="form-container">
+  <h4>เพิ่มข้อมูลร้านค้า</h4>
+
+  <input id="shopName" placeholder="ชื่อร้าน">
+
+  <select id="shopType">
+    <option value="อาหารเครื่องดื่ม">ร้านอาหาร / เครื่องดื่ม</option>
+    <option value="ค้าปลีก">ร้านค้าปลีก</option>
+    <option value="บริการ">ร้านบริการ</option>
+  </select>
+
+  <textarea id="shopDesc" placeholder="คำอธิบายร้านค้า"></textarea>
+
+  <button id="btnLocate">📍 ดึงตำแหน่งปัจจุบัน</button>
+
+  <p>หรือปรับหมุดที่แผนที่ด้วยตนเอง</p>
+
+  <button id="btnSave">บันทึกข้อมูลร้าน</button>
+</div>
+
+
+<!-- Leaflet -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+  import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
+
+  // Firebase Config
+  const firebaseConfig = {
+    apiKey: "AIzaSyDGYuI3yxJbUTc6T_0pm6WiEKZul11tXS0",
+    authDomain: "suchartwork-1487382986748.firebaseapp.com",
+    databaseURL: "https://suchartwork-1487382986748.firebaseio.com",
+    projectId: "suchartwork-1487382986748",
+    storageBucket: "suchartwork-1487382986748.firebasestorage.app",
+    messagingSenderId: "353884592527",
+    appId: "1:353884592527:web:4233ac2ae7eef075eb13fa"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // --- MAP ---
+  const map = L.map('map').setView([16.4322, 102.8236], 12); // ศูนย์กลางขอนแก่น
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19
+  }).addTo(map);
+
+  // หมุดเลื่อนตำแหน่งได้
+  let marker = L.marker([16.4322, 102.8236], { draggable: true }).addTo(map);
+
+  // ปุ่มดึงพิกัดปัจจุบัน
+  document.getElementById("btnLocate").onclick = () => {
+    navigator.geolocation.getCurrentPosition(pos => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      marker.setLatLng([lat, lng]);
+      map.setView([lat, lng], 16);
+    });
+  };
+
+  // บันทึกข้อมูลร้าน
+  document.getElementById("btnSave").onclick = () => {
+    const name = document.getElementById("shopName").value.trim();
+    const type = document.getElementById("shopType").value;
+    const desc = document.getElementById("shopDesc").value.trim();
+    const { lat, lng } = marker.getLatLng();
+
+    if (!name) {
+      alert("กรุณากรอกชื่อร้าน");
+      return;
+    }
+
+    push(ref(db, "shops"), {
+      name, type, desc, lat, lng, time: Date.now()
+    });
+
+    alert("บันทึกข้อมูลสำเร็จ ✅");
+  };
+
+  // แสดงหมุดร้านค้าทั้งหมดแบบ Real-time
+  const colors = {
+    "อาหารเครื่องดื่ม": "red",
+    "ค้าปลีก": "blue",
+    "บริการ": "green"
+  };
+
+  onValue(ref(db, "shops"), snapshot => {
+    map.eachLayer(layer => {
+      if (layer instanceof L.Marker && layer !== marker) map.removeLayer(layer);
+    });
+
+    snapshot.forEach(s => {
+      const d = s.val();
+      L.marker([d.lat, d.lng], { icon: L.icon({
+        iconUrl: `https://chart.googleapis.com/chart?chst=d_map_pin_icon&chld=store|${colors[d.type]}`,
+        iconSize: [30, 50]
+      })})
+      .addTo(map)
+      .bindPopup(`<b>${d.name}</b><br>${d.type}<br>${d.desc}`);
+    });
+  });
+
+</script>
+</body>
+</html>
