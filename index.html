@@ -1,173 +1,97 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <title>คนละครึ่งพลัส - ร้านค้าขอนแก่น</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>คนละครึ่งพลัส - ขอนแก่น</title>
 
-  <link rel="manifest" href="manifest.json">
-
-  <meta name="theme-color" content="#0056a3">
-
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
   <style>
-    body { margin: 0; font-family: "Prompt", sans-serif; background: #fefefe; }
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
     header {
-      background: #0056a3;
+      padding: 10px 12px;
+      background: #0d47a1;
       color: white;
-      padding: 12px;
       text-align: center;
-      font-size: 20px;
+      font-size: 1.4rem;
+      font-weight: bold;
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 10px;
-    }
-    header img { height: 38px; }
-    #map { height: 55vh; }
-
-    .toolbar {
-      display: flex;
-      padding: 8px;
-      background: #fffbe8;
-      border-bottom: 1px solid #ddd;
       gap: 8px;
     }
 
-    input, select, textarea, button {
-      width: 100%; padding: 8px; margin-top: 4px; font-size: 16px;
+    header img.logo {
+      height: 32px;
     }
-    button { background: #0056a3; color: white; border: none; cursor: pointer; }
 
-    .form-container { padding: 10px; background: #fafafa; border-top: 1px solid #ddd; }
+    #filter-bar {
+      display: flex;
+      gap: 8px;
+      padding: 8px;
+      background: #fafafa;
+      border-bottom: 1px solid #ddd;
+      overflow-x: auto;
+    }
+
+    #filter-bar button {
+      flex-shrink: 0;
+      padding: 10px 14px;
+      border-radius: 6px;
+      border: none;
+      font-size: 1.1rem;
+      background: #e0e0e0;
+    }
+
+    #filter-bar button.active {
+      background: #0d47a1;
+      color: white;
+      font-weight: bold;
+    }
+
+    #map {
+      flex: 1;
+    }
+
+    /* Popup text size */
+    .leaflet-popup-content {
+      font-size: 1.2rem;
+      line-height: 1.4;
+    }
+
   </style>
 </head>
 <body>
 
 <header>
-  <img src="icons/icon-192.png">
-  <span>แผนที่ร้านคนละครึ่งพลัส - ขอนแก่น</span>
+  <img src="logo.png" class="logo" alt="">
+  คนละครึ่งพลัส - ขอนแก่น
 </header>
 
-<div class="toolbar">
-  <input id="searchBox" placeholder="ค้นหาร้านค้า 🔍">
-  <select id="filterType">
-    <option value="ทั้งหมด">ประเภทร้านทั้งหมด</option>
-    <option value="อาหารเครื่องดื่ม">ร้านอาหาร / เครื่องดื่ม</option>
-    <option value="ค้าปลีก">ร้านค้าปลีก</option>
-    <option value="บริการ">ร้านบริการ</option>
-  </select>
+<div id="filter-bar">
+  <button data-type="all" class="active">ทั้งหมด</button>
+  <button data-type="อาหารเครื่องดื่ม">🍜 อาหาร/เครื่องดื่ม</button>
+  <button data-type="ค้าปลีก">🛒 ร้านค้าปลีก</button>
+  <button data-type="บริการ">💈 ร้านบริการ</button>
 </div>
 
 <div id="map"></div>
 
-<div class="form-container">
-  <h4>เพิ่มข้อมูลร้านค้า</h4>
-  <input id="shopName" placeholder="ชื่อร้าน">
-  <select id="shopType">
-    <option value="อาหารเครื่องดื่ม">ร้านอาหาร / เครื่องดื่ม</option>
-    <option value="ค้าปลีก">ร้านค้าปลีก</option>
-    <option value="บริการ">ร้านบริการ</option>
-  </select>
-  <textarea id="shopDesc" placeholder="คำอธิบายร้าน"></textarea>
-  <button id="btnLocate">📍 ดึงตำแหน่งปัจจุบัน</button>
-  <button id="btnSave">บันทึกข้อมูลร้าน</button>
-</div>
+<!-- Leaflet -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Firebase -->
+<script type="module" src="app.js"></script>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
-  import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyDGYuI3yxJbUTc6T_0pm6WiEKZul11tXS0",
-    authDomain: "suchartwork-1487382986748.firebaseapp.com",
-    databaseURL: "https://suchartwork-1487382986748.firebaseio.com",
-    projectId: "suchartwork-1487382986748",
-    storageBucket: "suchartwork-1487382986748.firebasestorage.app",
-    messagingSenderId: "353884592527",
-    appId: "1:353884592527:web:4233ac2ae7eef075eb13fa"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
-
-  // MAP
-  const map = L.map('map').setView([16.4322, 102.8236], 12);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-  let userLocation = null;
-
-  navigator.geolocation.getCurrentPosition(pos => {
-    userLocation = [pos.coords.latitude, pos.coords.longitude];
-  });
-
-  let marker = L.marker([16.4322, 102.8236], { draggable: true }).addTo(map);
-
-  document.getElementById("btnLocate").onclick = () => {
-    navigator.geolocation.getCurrentPosition(pos => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      marker.setLatLng([lat, lng]);
-      map.setView([lat, lng], 16);
-    });
-  };
-
-  document.getElementById("btnSave").onclick = () => {
-    const name = shopName.value.trim();
-    const type = shopType.value;
-    const desc = shopDesc.value.trim();
-    const { lat, lng } = marker.getLatLng();
-    if (!name) return alert("กรุณากรอกชื่อร้าน");
-
-    push(ref(db, "shops"), { name, type, desc, lat, lng });
-    alert("บันทึกสำเร็จ ✅");
-  };
-
-  const colors = { "อาหารเครื่องดื่ม": "red", "ค้าปลีก": "blue", "บริการ": "green" };
-
-  function distance(lat1, lon1, lat2, lon2) {
-    const R = 6371;
-    const dLat = (lat2-lat1) * Math.PI/180;
-    const dLon = (lon2-lon1) * Math.PI/180;
-    const a = Math.sin(dLat/2)**2 +
-              Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*
-              Math.sin(dLon/2)**2;
-    return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))).toFixed(2);
-  }
-
-  function refreshMarkers() {
-    map.eachLayer(l => { if (l instanceof L.Marker && l !== marker) map.removeLayer(l); });
-
-    const keyword = searchBox.value.trim();
-    const filter = filterType.value;
-
-    onValue(ref(db, "shops"), snap => {
-      snap.forEach(s => {
-        const d = s.val();
-
-        if (filter !== "ทั้งหมด" && d.type !== filter) return;
-        if (keyword && !d.name.includes(keyword)) return;
-
-        const dist = userLocation ? `(${distance(userLocation[0], userLocation[1], d.lat, d.lng)} km จากคุณ)` : "";
-
-        L.marker([d.lat, d.lng], { icon: L.icon({
-          iconUrl: `https://chart.googleapis.com/chart?chst=d_map_pin_icon&chld=store|${colors[d.type]}`,
-          iconSize: [30, 50]
-        })})
-        .addTo(map)
-        .bindPopup(`<b>${d.name}</b><br>${d.type}<br>${d.desc}<br>${dist}`);
-      });
-    });
-  }
-
-  searchBox.oninput = refreshMarkers;
-  filterType.onchange = refreshMarkers;
-  refreshMarkers();
-
-  // PWA
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("service-worker.js");
-</script>
 </body>
 </html>
