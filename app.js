@@ -1,104 +1,59 @@
-// Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
 
-// Firebase Config (ใช้ของคุณ)
 const firebaseConfig = {
   apiKey: "AIzaSyDGYuI3yxJbUTc6T_0pm6WiEKZul11tXS0",
   authDomain: "suchartwork-1487382986748.firebaseapp.com",
   databaseURL: "https://suchartwork-1487382986748.firebaseio.com",
   projectId: "suchartwork-1487382986748",
-  storageBucket: "suchartwork-1487382986748.firebasestorage.app",
+  storageBucket: "suchartwork-1487382986748.appspot.com",
   messagingSenderId: "353884592527",
   appId: "1:353884592527:web:4233ac2ae7eef075eb13fa"
 };
 
-// Init Firebase
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const shopRef = ref(db, "shops");
 
-// --- Map Setup ---
-const map = L.map('map').setView([16.4419, 102.8350], 13); // Default ขอนแก่น
+let userLat = null, userLng = null;
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19
-}).addTo(map);
+const map = L.map("map").setView([16.5, 102.8], 13);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
-// --- Marker Icons ---
-const icons = {
-  "อาหารเครื่องดื่ม": L.icon({ iconUrl: "pin_food.png", iconSize: [40, 40] }),
-  "ค้าปลีก": L.icon({ iconUrl: "pin_shop.png", iconSize: [40, 40] }),
-  "บริการ": L.icon({ iconUrl: "pin_service.png", iconSize: [40, 40] })
-};
-
-let userLocation = null;
-let markers = [];
-
-// --- Track User Location ---
-navigator.geolocation.watchPosition(pos => {
-  userLocation = [pos.coords.latitude, pos.coords.longitude];
-  L.circleMarker(userLocation, { radius: 8 }).addTo(map);
+navigator.geolocation.getCurrentPosition(pos => {
+  userLat = pos.coords.latitude;
+  userLng = pos.coords.longitude;
+  L.marker([userLat, userLng]).addTo(map).bindPopup("ตำแหน่งของคุณ");
 });
 
-// --- Load Shops ---
-onValue(shopRef, (snapshot) => {
-  const data = snapshot.val();
-  markers.forEach(m => map.removeLayer(m)); // Clear old markers
-  markers = [];
+const markerGroup = L.layerGroup().addTo(map);
 
-  for (let id in data) {
-    const shop = data[id];
+function navTo(lat, lng) {
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+  window.open(url, "_blank");
+}
 
-    const marker = L.marker([shop.lat, shop.lng], {
-      icon: icons[shop.type] || icons["อาหารเครื่องดื่ม"]
+function loadShops() {
+  onValue(ref(db, "shops"), snapshot => {
+    markerGroup.clearLayers();
+    const search = document.getElementById("searchBox").value.toLowerCase();
+    const filter = document.getElementById("filterType").value;
+    snapshot.forEach(item => {
+      const shop = item.val();
+      if (search && !shop.name.toLowerCase().includes(search)) return;
+      if (filter && filter !== shop.type) return;
+
+      const popup = `
+        <div class="popup-title">${shop.name}</div>
+        <div>${shop.type}</div>
+        <div>${shop.desc}</div>
+        <a class="nav-btn" onclick="navTo(${shop.lat},${shop.lng})">นำทาง</a>
+      `;
+      L.marker([shop.lat, shop.lng]).addTo(markerGroup).bindPopup(popup);
     });
-
-    let distanceText = "";
-    if (userLocation) {
-      const dist = calcDistance(userLocation[0], userLocation[1], shop.lat, shop.lng);
-      distanceText = `<br>📍 ระยะจากคุณ: <b>${dist.toFixed(1)} กม.</b>`;
-    }
-
-    marker.bindPopup(`
-      <b>${shop.name}</b><br>
-      ประเภท: ${shop.type}<br>
-      ${shop.desc || ""}${distanceText}
-    `);
-
-    marker.addTo(map);
-    markers.push({ marker, type: shop.type });
-  }
-});
-
-// --- Filter Buttons ---
-document.querySelectorAll("#filter-bar button").forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll("#filter-bar button").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    filterMarkers(btn.dataset.type);
-  };
-});
-
-function filterMarkers(type) {
-  markers.forEach(obj => {
-    if (type === "all" || obj.type === type) {
-      map.addLayer(obj.marker);
-    } else {
-      map.removeLayer(obj.marker);
-    }
   });
 }
 
-// --- Calculate Distance (km) ---
-function calcDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI/180;
-  const dLon = (lon2 - lon1) * Math.PI/180;
-  const a =
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
-}
+window.navTo = navTo;
+loadShops();
+document.getElementById("searchBox").oninput = loadShops;
+document.getElementById("filterType").onchange = loadShops;
