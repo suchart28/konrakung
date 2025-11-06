@@ -1,12 +1,9 @@
 {
-  "name": "โครงการส่งเสริมร้านชุมชน",
-  "short_name": "ร้านชุมชน",
+  "name": "คนละครึ่งพลัส ขอนแก่น",
+  "short_name": "คนละครึ่งพลัส",
   "start_url": "index.html",
   "display": "standalone",
-  "theme_color": "#004aad",
-  "background_color": "#ffffff",
-  "icons": [
-    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png" }
-  ]
+  "background_color": "#0052a5",
+  "theme_color": "#0052a5",
+  "icons": []
 }
