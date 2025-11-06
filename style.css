@@ -1,0 +1,33 @@
+body {
+  margin: 0; font-family: sans-serif;
+  background: #fafafa;
+}
+
+header {
+  text-align:center;
+  background:#0052a5;
+  padding:10px;
+  color:white;
+}
+.logo { height:50px; }
+
+#map { height: calc(100vh - 200px); }
+
+#searchBox {
+  width:100%; padding:12px; font-size:18px;
+  border-radius:8px; border:1px solid #aaa;
+}
+
+.filter-bar {
+  display:flex; justify-content:space-around;
+  padding:5px;
+}
+.filter-bar button {
+  padding:8px 14px; border-radius:8px; border:none;
+  background:#e6e6e6; font-size:16px;
+}
+.filter-bar button.active {
+  background:#0052a5; color:white; font-weight:bold;
+}
+
+#storeCount { text-align:center; font-size:18px; font-weight:bold; padding:6px; }
