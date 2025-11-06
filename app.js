@@ -1,6 +1,8 @@
+// Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
 
+// Firebase Config (ใช้ของคุณ)
 const firebaseConfig = {
   apiKey: "AIzaSyDGYuI3yxJbUTc6T_0pm6WiEKZul11tXS0",
   authDomain: "suchartwork-1487382986748.firebaseapp.com",
@@ -11,78 +13,98 @@ const firebaseConfig = {
   appId: "1:353884592527:web:4233ac2ae7eef075eb13fa"
 };
 
+// Init Firebase
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const shopRef = ref(db, "shops");
 
-let map = L.map("map").setView([16.4419, 102.835], 13);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+// --- Map Setup ---
+const map = L.map('map').setView([16.4419, 102.8350], 13); // Default ขอนแก่น
 
-const foodIcon = L.icon({ iconUrl: "pin_food.png", iconSize: [40, 40] });
-const retailIcon = L.icon({ iconUrl: "pin_shop.png", iconSize: [40, 40] });
-const serviceIcon = L.icon({ iconUrl: "pin_service.png", iconSize: [40, 40] });
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
+}).addTo(map);
 
-let markers = [];
-let storeData = {};
-let currentFilter = "ทั้งหมด";
-let searchKeyword = "";
-
-onValue(ref(db, "stores"), (snapshot) => {
-  storeData = snapshot.val() || {};
-  refreshMarkers();
-});
-
-function refreshMarkers() {
-  markers.forEach(m => map.removeLayer(m));
-  markers = [];
-
-  let total = 0, f=0,r=0,s=0;
-  const kw = searchKeyword.trim().toLowerCase();
-
-  Object.keys(storeData).forEach(id => {
-    const o = storeData[id];
-    total++;
-    if (o.type === "ร้านอาหารเครื่องดื่ม") f++;
-    if (o.type === "ร้านค้าปลีก") r++;
-    if (o.type === "ร้านบริการ") s++;
-
-    if (currentFilter !== "ทั้งหมด" && currentFilter !== o.type) return;
-    if (kw && !o.name.toLowerCase().includes(kw)) return;
-
-    const icon = o.type === "ร้านอาหารเครื่องดื่ม" ? foodIcon :
-                 o.type === "ร้านค้าปลีก" ? retailIcon : serviceIcon;
-
-    let m = L.marker([o.lat, o.lng], { icon }).addTo(map);
-    m.bindPopup(`
-      <b>${o.name}</b><br>${o.type}<br>${o.desc}<br>
-      <a target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=${o.lat},${o.lng}">
-        นำทางไปที่นี่
-      </a>
-    `);
-    markers.push(m);
-  });
-
-  document.getElementById("storeCount").innerText = `รวม ${total} ร้าน`;
-  btnFood.innerText = `ร้านอาหาร (${f})`;
-  btnRetail.innerText = `ร้านค้าปลีก (${r})`;
-  btnService.innerText = `ร้านบริการ (${s})`;
-}
-
-document.getElementById("searchBox").oninput = e => {
-  searchKeyword = e.target.value;
-  refreshMarkers();
+// --- Marker Icons ---
+const icons = {
+  "อาหารเครื่องดื่ม": L.icon({ iconUrl: "pin_food.png", iconSize: [40, 40] }),
+  "ค้าปลีก": L.icon({ iconUrl: "pin_shop.png", iconSize: [40, 40] }),
+  "บริการ": L.icon({ iconUrl: "pin_service.png", iconSize: [40, 40] })
 };
 
-function setFilter(v){
-  currentFilter=v;
-  document.querySelectorAll(".filter-bar button").forEach(b=>b.classList.remove("active"));
-  if(v==="ทั้งหมด") btnAll.classList.add("active");
-  if(v==="ร้านอาหารเครื่องดื่ม") btnFood.classList.add("active");
-  if(v==="ร้านค้าปลีก") btnRetail.classList.add("active");
-  if(v==="ร้านบริการ") btnService.classList.add("active");
-  refreshMarkers();
+let userLocation = null;
+let markers = [];
+
+// --- Track User Location ---
+navigator.geolocation.watchPosition(pos => {
+  userLocation = [pos.coords.latitude, pos.coords.longitude];
+  L.circleMarker(userLocation, { radius: 8 }).addTo(map);
+});
+
+// --- Load Shops ---
+onValue(shopRef, (snapshot) => {
+  const data = snapshot.val();
+  markers.forEach(m => map.removeLayer(m)); // Clear old markers
+  markers = [];
+
+  for (let id in data) {
+    const shop = data[id];
+
+    const marker = L.marker([shop.lat, shop.lng], {
+      icon: icons[shop.type] || icons["อาหารเครื่องดื่ม"]
+    });
+
+    let distanceText = "";
+    if (userLocation) {
+      const dist = calcDistance(userLocation[0], userLocation[1], shop.lat, shop.lng);
+      distanceText = `<br>📍 ระยะจากคุณ: <b>${dist.toFixed(1)} กม.</b>`;
+    }
+
+   marker.bindPopup(`
+  <b>${shop.name}</b><br>
+  ประเภท: ${shop.type}<br>
+  ${shop.desc || ""}${distanceText}
+  <br><br>
+  <a href="https://www.google.com/maps/dir/?api=1&destination=${shop.lat},${shop.lng}" 
+     target="_blank" 
+     style="display:inline-block;padding:10px 14px;background:#0d47a1;color:white;border-radius:6px;text-decoration:none;font-size:1.1rem;">
+     🧭 นำทางไปยังร้าน
+  </a>
+`);
+
+    marker.addTo(map);
+    markers.push({ marker, type: shop.type });
+  }
+});
+
+// --- Filter Buttons ---
+document.querySelectorAll("#filter-bar button").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll("#filter-bar button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    filterMarkers(btn.dataset.type);
+  };
+});
+
+function filterMarkers(type) {
+  markers.forEach(obj => {
+    if (type === "all" || obj.type === type) {
+      map.addLayer(obj.marker);
+    } else {
+      map.removeLayer(obj.marker);
+    }
+  });
 }
 
-btnAll.onclick = ()=>setFilter("ทั้งหมด");
-btnFood.onclick = ()=>setFilter("ร้านอาหารเครื่องดื่ม");
-btnRetail.onclick = ()=>setFilter("ร้านค้าปลีก");
-btnService.onclick = ()=>setFilter("ร้านบริการ");
+// --- Calculate Distance (km) ---
+function calcDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI/180;
+  const dLon = (lon2 - lon1) * Math.PI/180;
+  const a =
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}

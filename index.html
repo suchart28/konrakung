@@ -1,40 +1,97 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>แผนที่ร้านค้าคนละครึ่งพลัส - ขอนแก่น</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>คนละครึ่งพลัส - ขอนแก่น</title>
 
-<!-- Leaflet -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
-<link rel="manifest" href="manifest.json">
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
 
+    header {
+      padding: 10px 12px;
+      background: #0d47a1;
+      color: white;
+      text-align: center;
+      font-size: 1.4rem;
+      font-weight: bold;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+
+    header img.logo {
+      height: 32px;
+    }
+
+    #filter-bar {
+      display: flex;
+      gap: 8px;
+      padding: 8px;
+      background: #fafafa;
+      border-bottom: 1px solid #ddd;
+      overflow-x: auto;
+    }
+
+    #filter-bar button {
+      flex-shrink: 0;
+      padding: 10px 14px;
+      border-radius: 6px;
+      border: none;
+      font-size: 1.1rem;
+      background: #e0e0e0;
+    }
+
+    #filter-bar button.active {
+      background: #0d47a1;
+      color: white;
+      font-weight: bold;
+    }
+
+    #map {
+      flex: 1;
+    }
+
+    /* Popup text size */
+    .leaflet-popup-content {
+      font-size: 1.2rem;
+      line-height: 1.4;
+    }
+
+  </style>
 </head>
 <body>
 
 <header>
-  <img src="https://upload.wikimedia.org/wikipedia/commons/5/5a/Seal_of_Prime_Minister%27s_Office_of_Thailand.png" class="logo">
-  <h1>คนละครึ่งพลัส - ขอนแก่น</h1>
+  <img src="logo.png" class="logo" alt="">
+  คนละครึ่งพลัส - ขอนแก่น
 </header>
 
-<div style="padding: 8px;">
-  <input id="searchBox" type="text" placeholder="ค้นหาร้าน..." />
-</div>
-
-<div id="storeCount">รวม 0 ร้าน</div>
-
-<div class="filter-bar">
-  <button id="btnAll" class="active">ทั้งหมด</button>
-  <button id="btnFood">ร้านอาหาร</button>
-  <button id="btnRetail">ร้านค้าปลีก</button>
-  <button id="btnService">ร้านบริการ</button>
+<div id="filter-bar">
+  <button data-type="all" class="active">ทั้งหมด</button>
+  <button data-type="อาหารเครื่องดื่ม">🍜 อาหาร/เครื่องดื่ม</button>
+  <button data-type="ค้าปลีก">🛒 ร้านค้าปลีก</button>
+  <button data-type="บริการ">💈 ร้านบริการ</button>
 </div>
 
 <div id="map"></div>
 
+<!-- Leaflet -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<!-- Firebase -->
 <script type="module" src="app.js"></script>
+
 </body>
 </html>
